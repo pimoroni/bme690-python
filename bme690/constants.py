@@ -386,8 +386,6 @@ class BME690Data:
         self.intf = None
         # Memory page used
         self.mem_page = None
-        # Ambient temperature in Degree C
-        self.ambient_temperature = None
         # Field Data
         self.data = FieldData()
         # Sensor calibration data

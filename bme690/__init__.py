@@ -90,7 +90,8 @@ class BME690(BME690Data):
         if value == 0:
             self.offset_temp_in_t_fine = 0
         else:
-            self.offset_temp_in_t_fine = int(math.copysign((((int(abs(value) * 100)) << 8) - 128) / 5, value))
+            # T_C = (T_FINE * 25) // 16384 / 100
+            self.offset_temp_in_t_fine = int(math.copysign(((int(abs(value) * 100)) << 14) / 25, value))
 
     def set_humidity_oversample(self, value):
         """Set humidity oversampling.
@@ -305,8 +306,6 @@ class BME690(BME690Data):
 
             temperature = self._calc_temperature(adc_temp)
             self.data.temperature = temperature / 100.0
-            self.ambient_temperature = temperature  # Saved for heater calc
-
             self.data.pressure = self._calc_pressure(adc_pres) / 100.0
             self.data.humidity = self._calc_humidity(adc_hum) / 1000.0
 
@@ -346,11 +345,14 @@ class BME690(BME690Data):
         part5 = (part2 * 262144) + part4
         part6 = part5 // 4294967296
         
-        tem_comp = (part6 * 25) // 16384
-        self.calibration_data.t_fine = part6
+        tem_comp = ((part6 + self.offset_temp_in_t_fine) * 25) // 16384
+        self.calibration_data.t_fine = part6 + self.offset_temp_in_t_fine
         
         return tem_comp
 
+    @property
+    def ambient_temperature(self):
+        return (self.calibration_data.t_fine * 25) // 16384
 
     def _calc_pressure(self, pressure_adc):
 
@@ -383,12 +385,8 @@ class BME690(BME690Data):
         press_comp = (part4 // (1 << 40)) * 25
         
         return press_comp // 100
-        
-        
-        
 
     def _calc_humidity(self, humidity_adc):
-
         t_comp = self.ambient_temperature
         t_fine = (t_comp * 256 - 128) // 5
         var_h = t_fine - 76800
@@ -398,11 +396,9 @@ class BME690(BME690Data):
         hum_comp = var_h // 4096
         
         return hum_comp
-        
 
     def _calc_gas_resistance(self, gas_res_adc, gas_range):
         """Convert the raw gas resistance using calibration data."""
-        
         var1 = 262144 >> gas_range
         var2 = gas_res_adc - 512
         
@@ -413,7 +409,6 @@ class BME690(BME690Data):
         calc_gas_res = calc_gas_res * 100
         
         return calc_gas_res
-
 
     def _calc_heater_resistance(self, temperature):
         """Convert raw heater resistance using calibration data."""
