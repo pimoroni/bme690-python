@@ -344,10 +344,10 @@ class BME690(BME690Data):
         part4 = part3 * self.calibration_data.par_t3
         part5 = (part2 * 262144) + part4
         part6 = part5 // 4294967296
-        
+
         tem_comp = ((part6 + self.offset_temp_in_t_fine) * 25) // 16384
         self.calibration_data.t_fine = part6 + self.offset_temp_in_t_fine
-        
+
         return tem_comp
 
     @property
@@ -362,7 +362,7 @@ class BME690(BME690Data):
         part4 = self.calibration_data.par_p4 * part3 // 32
         part5 = self.calibration_data.par_p3 * part1 * 16
         part6 = self.calibration_data.par_p2 * self.calibration_data.t_fine * (1 << 22)
-        
+
         offset = self.calibration_data.par_p1 * (1 << 47) + part4 + part5 + part6
         part2 = (self.calibration_data.par_p8 * part3) // (1 << 5)
         part4 = self.calibration_data.par_p7 * part1 * (1 << 2)
@@ -370,44 +370,44 @@ class BME690(BME690Data):
         part5 =(self.calibration_data.par_p6 - 16384) * self.calibration_data.t_fine * (1 << 21)
         sensitivity = (self.calibration_data.par_p5 - 16384) * (1 << 46) + part2 + part4 + part5
         part1 = sensitivity // (1 << 24) * pressure_adc
-        
+
         part2 = self.calibration_data.par_p10 * self.calibration_data.t_fine
         part3 = part2 + self.calibration_data.par_p9 * (1 << 16)
         part4 = part3 * pressure_adc // (1 << 13)
         part5 = (pressure_adc * part4 // 10) // (1 << 9)
         part5 = part5 * 10
         part6 = pressure_adc * pressure_adc
-        
+
         part2 = self.calibration_data.par_p11 * part6 // (1 << 16)
         part3 = part2 * pressure_adc // (1 << 7)
         part4 = offset // 4 + part1 + part5 + part3
-        
+
         press_comp = (part4 // (1 << 40)) * 25
-        
+
         return press_comp // 100
 
     def _calc_humidity(self, humidity_adc):
         t_comp = self.ambient_temperature
         t_fine = (t_comp * 256 - 128) // 5
         var_h = t_fine - 76800
-        
+
         var_h = (((((humidity_adc * 16384) - (self.calibration_data.par_h1 * 1048576) - (self.calibration_data.par_h2 * var_h)) + 16384) // 32768) * ((((((var_h * self.calibration_data.par_h4) // 1024) * ((var_h * self.calibration_data.par_h1) / 2048 + 32768)) // 1024) + 2097152) * self.calibration_data.par_h5 + 8192) // 16384)
         var_h = var_h - (((((var_h // 32768) * (var_h / 32768)) // 128) * self.calibration_data.par_h6) // 16)
         hum_comp = var_h // 4096
-        
+
         return hum_comp
 
     def _calc_gas_resistance(self, gas_res_adc, gas_range):
         """Convert the raw gas resistance using calibration data."""
         var1 = 262144 >> gas_range
         var2 = gas_res_adc - 512
-        
+
         var2 *= 3
         var2 = 4096 + var2
-        
+
         calc_gas_res = (10000 * var1) // var2
         calc_gas_res = calc_gas_res * 100
-        
+
         return calc_gas_res
 
     def _calc_heater_resistance(self, temperature):
