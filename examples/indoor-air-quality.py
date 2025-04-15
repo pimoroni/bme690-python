@@ -23,9 +23,9 @@ except (RuntimeError, IOError):
 # change the balance between accuracy and noise in
 # the data.
 
-sensor.set_humidity_oversample(bme680.OS_2X)
-sensor.set_pressure_oversample(bme680.OS_4X)
-sensor.set_temperature_oversample(bme680.OS_8X)
+sensor.set_humidity_oversample(bme690.OS_2X)
+sensor.set_pressure_oversample(bme690.OS_4X)
+sensor.set_temperature_oversample(bme690.OS_8X)
 sensor.set_filter(bme690.FILTER_SIZE_3)
 sensor.set_gas_status(bme690.ENABLE_GAS_MEAS)
 
