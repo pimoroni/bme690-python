@@ -1,14 +1,14 @@
 import pytest
 
-import bme680
+import bme690
 
 
 def test_setup_not_present(smbus_notpresent):
-    """Mock the adbsence of a BME680 and test initialisation."""
+    """Mock the adbsence of a BME690 and test initialisation."""
     with pytest.raises(RuntimeError):
-        sensor = bme680.BME680()  # noqa F841
+        sensor = bme690.BME690()  # noqa F841
 
 
 def test_setup_mock_present(smbus):
-    """Mock the presence of a BME680 and test initialisation."""
-    sensor = bme680.BME680()  # noqa F841
+    """Mock the presence of a BME690 and test initialisation."""
+    sensor = bme690.BME690()  # noqa F841
