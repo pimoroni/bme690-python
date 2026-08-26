@@ -45,9 +45,9 @@ class BME690(BME690Data):
         try:
             self.chip_id = self._get_regs(constants.CHIP_ID_ADDR, 1)
             if self.chip_id != constants.CHIP_ID:
-                raise RuntimeError('BME690 Not Found. Invalid CHIP ID: 0x{0:02x}'.format(self.chip_id))
-        except IOError:
-            raise RuntimeError("Unable to identify BME690 at 0x{:02x} (IOError)".format(self.i2c_addr))
+                raise RuntimeError(f'BME690 Not Found. Invalid CHIP ID: 0x{self.chip_id:02x}')
+        except OSError:
+            raise RuntimeError(f"Unable to identify BME690 at 0x{self.i2c_addr:02x} (IOError)") from None
 
         self._variant = self._get_regs(constants.CHIP_VARIANT_ADDR, 1)
 
@@ -179,7 +179,7 @@ class BME690(BME690Data):
 
         """
         if value > constants.NBCONV_MAX or value < constants.NBCONV_MIN:
-            raise ValueError("Profile '{}' should be between {} and {}".format(value, constants.NBCONV_MIN, constants.NBCONV_MAX))
+            raise ValueError(f"Profile '{value}' should be between {constants.NBCONV_MIN} and {constants.NBCONV_MAX}")
 
         self.gas_settings.nb_conv = value
         self._set_bits(constants.CONF_ODR_RUN_GAS_NBC_ADDR, constants.NBCONV_MSK, constants.NBCONV_POS, value)
@@ -229,7 +229,7 @@ class BME690(BME690Data):
 
         """
         if nb_profile > constants.NBCONV_MAX or value < constants.NBCONV_MIN:
-            raise ValueError('Profile "{}" should be between {} and {}'.format(nb_profile, constants.NBCONV_MIN, constants.NBCONV_MAX))
+            raise ValueError(f'Profile "{nb_profile}" should be between {constants.NBCONV_MIN} and {constants.NBCONV_MAX}')
 
         self.gas_settings.heatr_temp = value
         temp = int(self._calc_heater_resistance(self.gas_settings.heatr_temp))
@@ -248,7 +248,7 @@ class BME690(BME690Data):
 
         """
         if nb_profile > constants.NBCONV_MAX or value < constants.NBCONV_MIN:
-            raise ValueError('Profile "{}" should be between {} and {}'.format(nb_profile, constants.NBCONV_MIN, constants.NBCONV_MAX))
+            raise ValueError(f'Profile "{nb_profile}" should be between {constants.NBCONV_MIN} and {constants.NBCONV_MAX}')
 
         self.gas_settings.heatr_dur = value
         temp = self._calc_heater_duration(self.gas_settings.heatr_dur)
@@ -279,7 +279,7 @@ class BME690(BME690Data):
         """
         self.set_power_mode(constants.FORCED_MODE)
 
-        for attempt in range(10):
+        for _attempt in range(10):
             status = self._get_regs(constants.FIELD0_ADDR, 1)
 
             if (status & constants.NEW_DATA_MSK) == 0:
