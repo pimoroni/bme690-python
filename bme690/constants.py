@@ -248,6 +248,7 @@ class FieldData:
         # Contains new_data, gasm_valid & heat_stab
         self.status = None
         self.heat_stable = False
+        self.gas_valid = False
         # The index of the heater profile used
         self.gas_index = None
         # Measurement index to track order
@@ -312,7 +313,7 @@ class CalibrationData:
         self.par_p2 = bytes_to_word(calibration[P5_MSB_REG], calibration[P5_LSB_REG], bits=16)
         self.par_p3 = twos_comp(calibration[P7_REG], bits=8)
         self.par_p4 = twos_comp(calibration[P6_REG], bits=8)
-        self.par_p5 = bytes_to_word(calibration[P1_MSB_REG], calibration[P4_LSB_REG], bits=16, signed=True)
+        self.par_p5 = bytes_to_word(calibration[P1_MSB_REG], calibration[P1_LSB_REG], bits=16, signed=True)
         self.par_p6 = bytes_to_word(calibration[P2_MSB_REG], calibration[P2_LSB_REG], bits=16, signed=True)
         self.par_p7 = twos_comp(calibration[P3_REG], bits=8)
         self.par_p8 = twos_comp(calibration[TK3S_REG], bits=8)
@@ -321,11 +322,11 @@ class CalibrationData:
         self.par_p11 = twos_comp(calibration[P10_REG], bits=8)
 
         # Humidity related coefficients
-        self.par_h1 = (calibration[H1_MSB_REG] << HUM_REG_SHIFT_VAL) | (calibration[H1_LSB_REG] & BIT_H1_DATA_MSK)
+        self.par_h1 = twos_comp((calibration[H1_MSB_REG] << HUM_REG_SHIFT_VAL) | (calibration[H1_LSB_REG] & BIT_H1_DATA_MSK), bits=12)
         self.par_h2 = twos_comp(calibration[H3_REG], bits=8)
         self.par_h3 = twos_comp(calibration[H5_REG], bits=8)
         self.par_h4 = twos_comp(calibration[H4_REG], bits=8)
-        self.par_h5 = (calibration[H2_MSB_REG] << HUM_REG_SHIFT_VAL) | (calibration[H2_LSB_REG] >> HUM_REG_SHIFT_VAL)
+        self.par_h5 = twos_comp((calibration[H2_MSB_REG] << HUM_REG_SHIFT_VAL) | (calibration[H2_LSB_REG] >> HUM_REG_SHIFT_VAL), bits=12)
         self.par_h6 = calibration[H6_REG]
 
         # Gas heater related coefficients

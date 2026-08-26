@@ -5,7 +5,7 @@ import time
 from . import constants
 from .constants import BME690Data
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 
 # Export constants to global namespace
@@ -255,7 +255,14 @@ class BME690(BME690Data):
         self._set_regs(constants.GAS_WAIT0_ADDR + nb_profile, temp)
 
     def set_power_mode(self, value, blocking=True):
-        """Set power mode."""
+        """Set power mode.
+
+        get_sensor_data sets FORCED_MODE to take a reading. Set SLEEP_MODE to
+        idle the sensor.
+
+        :param value: One of SLEEP_MODE or FORCED_MODE
+
+        """
         if value not in (constants.SLEEP_MODE, constants.FORCED_MODE):
             raise ValueError('Power mode should be one of SLEEP_MODE or FORCED_MODE')
 
@@ -263,12 +270,16 @@ class BME690(BME690Data):
 
         self._set_bits(constants.CONF_T_P_MODE_ADDR, constants.MODE_MSK, constants.MODE_POS, value)
 
-        while blocking and self.get_power_mode() != self.power_mode:
-            time.sleep(constants.POLL_PERIOD_MS / 1000.0)
+        # FORCED_MODE self-clears to SLEEP_MODE, so waiting to observe it can never terminate.
+        if blocking and value == constants.SLEEP_MODE:
+            for _ in range(10):
+                if self.get_power_mode() == value:
+                    break
+                time.sleep(constants.POLL_PERIOD_MS / 1000.0)
 
     def get_power_mode(self):
         """Get power mode."""
-        self.power_mode = self._get_regs(constants.CONF_T_P_MODE_ADDR, 1)
+        self.power_mode = (self._get_regs(constants.CONF_T_P_MODE_ADDR, 1) & constants.MODE_MSK) >> constants.MODE_POS
         return self.power_mode
 
     def get_sensor_data(self):
@@ -303,6 +314,7 @@ class BME690(BME690Data):
             self.data.status |= regs[16] & constants.HEAT_STAB_MSK
 
             self.data.heat_stable = (self.data.status & constants.HEAT_STAB_MSK) > 0
+            self.data.gas_valid = (self.data.status & constants.GASM_VALID_MSK) > 0
 
             temperature = self._calc_temperature(adc_temp)
             self.data.temperature = temperature / 100.0
