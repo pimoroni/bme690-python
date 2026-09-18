@@ -1,11 +1,15 @@
 """BME690 Temperature, Pressure, Humidity & Gas Sensor."""
 import math
 import time
+from importlib.metadata import PackageNotFoundError, version
 
 from . import constants
 from .constants import BME690Data
 
-__version__ = '1.0.0'
+try:
+    __version__ = version("bme690")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
 
 
 # Export constants to global namespace
@@ -45,9 +49,9 @@ class BME690(BME690Data):
         try:
             self.chip_id = self._get_regs(constants.CHIP_ID_ADDR, 1)
             if self.chip_id != constants.CHIP_ID:
-                raise RuntimeError('BME690 Not Found. Invalid CHIP ID: 0x{0:02x}'.format(self.chip_id))
-        except IOError:
-            raise RuntimeError("Unable to identify BME690 at 0x{:02x} (IOError)".format(self.i2c_addr))
+                raise RuntimeError(f'BME690 Not Found. Invalid CHIP ID: 0x{self.chip_id:02x}')
+        except OSError:
+            raise RuntimeError(f"Unable to identify BME690 at 0x{self.i2c_addr:02x} (IOError)") from None
 
         self._variant = self._get_regs(constants.CHIP_VARIANT_ADDR, 1)
 
@@ -179,7 +183,7 @@ class BME690(BME690Data):
 
         """
         if value > constants.NBCONV_MAX or value < constants.NBCONV_MIN:
-            raise ValueError("Profile '{}' should be between {} and {}".format(value, constants.NBCONV_MIN, constants.NBCONV_MAX))
+            raise ValueError(f"Profile '{value}' should be between {constants.NBCONV_MIN} and {constants.NBCONV_MAX}")
 
         self.gas_settings.nb_conv = value
         self._set_bits(constants.CONF_ODR_RUN_GAS_NBC_ADDR, constants.NBCONV_MSK, constants.NBCONV_POS, value)
@@ -229,7 +233,7 @@ class BME690(BME690Data):
 
         """
         if nb_profile > constants.NBCONV_MAX or value < constants.NBCONV_MIN:
-            raise ValueError('Profile "{}" should be between {} and {}'.format(nb_profile, constants.NBCONV_MIN, constants.NBCONV_MAX))
+            raise ValueError(f'Profile "{nb_profile}" should be between {constants.NBCONV_MIN} and {constants.NBCONV_MAX}')
 
         self.gas_settings.heatr_temp = value
         temp = int(self._calc_heater_resistance(self.gas_settings.heatr_temp))
@@ -248,14 +252,21 @@ class BME690(BME690Data):
 
         """
         if nb_profile > constants.NBCONV_MAX or value < constants.NBCONV_MIN:
-            raise ValueError('Profile "{}" should be between {} and {}'.format(nb_profile, constants.NBCONV_MIN, constants.NBCONV_MAX))
+            raise ValueError(f'Profile "{nb_profile}" should be between {constants.NBCONV_MIN} and {constants.NBCONV_MAX}')
 
         self.gas_settings.heatr_dur = value
         temp = self._calc_heater_duration(self.gas_settings.heatr_dur)
         self._set_regs(constants.GAS_WAIT0_ADDR + nb_profile, temp)
 
     def set_power_mode(self, value, blocking=True):
-        """Set power mode."""
+        """Set power mode.
+
+        get_sensor_data sets FORCED_MODE to take a reading. Set SLEEP_MODE to
+        idle the sensor.
+
+        :param value: One of SLEEP_MODE or FORCED_MODE
+
+        """
         if value not in (constants.SLEEP_MODE, constants.FORCED_MODE):
             raise ValueError('Power mode should be one of SLEEP_MODE or FORCED_MODE')
 
@@ -263,12 +274,16 @@ class BME690(BME690Data):
 
         self._set_bits(constants.CONF_T_P_MODE_ADDR, constants.MODE_MSK, constants.MODE_POS, value)
 
-        while blocking and self.get_power_mode() != self.power_mode:
-            time.sleep(constants.POLL_PERIOD_MS / 1000.0)
+        # FORCED_MODE self-clears to SLEEP_MODE, so waiting to observe it can never terminate.
+        if blocking and value == constants.SLEEP_MODE:
+            for _ in range(10):
+                if self.get_power_mode() == value:
+                    break
+                time.sleep(constants.POLL_PERIOD_MS / 1000.0)
 
     def get_power_mode(self):
         """Get power mode."""
-        self.power_mode = self._get_regs(constants.CONF_T_P_MODE_ADDR, 1)
+        self.power_mode = (self._get_regs(constants.CONF_T_P_MODE_ADDR, 1) & constants.MODE_MSK) >> constants.MODE_POS
         return self.power_mode
 
     def get_sensor_data(self):
@@ -279,7 +294,7 @@ class BME690(BME690Data):
         """
         self.set_power_mode(constants.FORCED_MODE)
 
-        for attempt in range(10):
+        for _attempt in range(10):
             status = self._get_regs(constants.FIELD0_ADDR, 1)
 
             if (status & constants.NEW_DATA_MSK) == 0:
@@ -303,6 +318,7 @@ class BME690(BME690Data):
             self.data.status |= regs[16] & constants.HEAT_STAB_MSK
 
             self.data.heat_stable = (self.data.status & constants.HEAT_STAB_MSK) > 0
+            self.data.gas_valid = (self.data.status & constants.GASM_VALID_MSK) > 0
 
             temperature = self._calc_temperature(adc_temp)
             self.data.temperature = temperature / 100.0

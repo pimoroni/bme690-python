@@ -52,4 +52,3 @@ sudo raspi-config nonint do_i2c 0
 ## Documentation & Support
 
 * Get help - http://forums.pimoroni.com/c/support
-
