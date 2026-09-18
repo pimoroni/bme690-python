@@ -1,11 +1,15 @@
 """BME690 Temperature, Pressure, Humidity & Gas Sensor."""
 import math
 import time
+from importlib.metadata import PackageNotFoundError, version
 
 from . import constants
 from .constants import BME690Data
 
-__version__ = '1.0.1'
+try:
+    __version__ = version("bme690")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
 
 
 # Export constants to global namespace
